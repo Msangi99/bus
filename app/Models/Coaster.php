@@ -14,6 +14,7 @@ class Coaster extends Model
 
     protected $fillable = [
         'user_id',
+        'driver_user_id',
         'name',
         'plate_number',
         'capacity',
@@ -57,6 +58,14 @@ class Coaster extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the driver user account for this coaster.
+     */
+    public function driver()
+    {
+        return $this->belongsTo(User::class, 'driver_user_id');
     }
 
     /**

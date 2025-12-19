@@ -17,7 +17,8 @@
 5. [Orders Management](#orders-management)
 6. [Pricing Management](#pricing-management)
 7. [Price Calculation](#price-calculation)
-8. [Error Responses](#error-responses)
+8. [Driver Management](#driver-management)
+9. [Error Responses](#error-responses)
 
 ---
 
@@ -1028,6 +1029,253 @@ POST /api/special-hire/admin/calculate-price
 
 ---
 
+## Driver Management
+
+### Create Driver Account
+
+Create a new driver account and assign to a coaster.
+
+```http
+POST /api/special-hire/admin/drivers
+```
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `coaster_id` | integer | Yes | ID of the coaster to assign driver to |
+| `name` | string | Yes | Driver's full name |
+| `email` | string | Yes | Driver's email (must be unique) |
+| `phone` | string | Yes | Driver's phone number |
+| `password` | string | Yes | Driver's password (min 6 chars) |
+
+**Example Request:**
+```json
+{
+    "coaster_id": 1,
+    "name": "John Driver",
+    "email": "john.driver@example.com",
+    "phone": "+255712345678",
+    "password": "driver123"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+    "success": true,
+    "message": "Driver account created and assigned successfully",
+    "data": {
+        "driver": {
+            "id": 10,
+            "name": "John Driver",
+            "email": "john.driver@example.com",
+            "phone": "+255712345678",
+            "role": "driver"
+        },
+        "coaster": {
+            "id": 1,
+            "name": "Luxury Coaster A",
+            "plate_number": "T 123 ABC"
+        }
+    }
+}
+```
+
+**Error Response (400):**
+```json
+{
+    "success": false,
+    "message": "This coaster already has a driver assigned"
+}
+```
+
+---
+
+### Get All Drivers
+
+Retrieve all drivers assigned to admin's coasters.
+
+```http
+GET /api/special-hire/admin/drivers
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "data": [
+        {
+            "driver": {
+                "id": 10,
+                "name": "John Driver",
+                "email": "john.driver@example.com",
+                "phone": "+255712345678",
+                "role": "driver"
+            },
+            "coaster": {
+                "id": 1,
+                "name": "Luxury Coaster A",
+                "plate_number": "T 123 ABC"
+            }
+        },
+        {
+            "driver": {
+                "id": 11,
+                "name": "Jane Driver",
+                "email": "jane.driver@example.com",
+                "phone": "+255787654321",
+                "role": "driver"
+            },
+            "coaster": {
+                "id": 2,
+                "name": "Premium Bus Alpha",
+                "plate_number": "T 456 XYZ"
+            }
+        }
+    ]
+}
+```
+
+---
+
+### Update Driver
+
+Update driver account information.
+
+```http
+PUT /api/special-hire/admin/drivers/{driverId}
+```
+
+**Path Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `driverId` | integer | Yes | Driver user ID |
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | No | Driver's name |
+| `phone` | string | No | Driver's phone number |
+| `password` | string | No | New password (min 6 chars) |
+
+**Example Request:**
+```json
+{
+    "name": "John Updated Driver",
+    "phone": "+255712999888",
+    "password": "newpassword123"
+}
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Driver updated successfully",
+    "data": {
+        "id": 10,
+        "name": "John Updated Driver",
+        "email": "john.driver@example.com",
+        "phone": "+255712999888"
+    }
+}
+```
+
+---
+
+### Assign Driver to Coaster
+
+Assign an existing driver to a coaster.
+
+```http
+POST /api/special-hire/admin/coasters/{coasterId}/assign-driver
+```
+
+**Path Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `coasterId` | integer | Yes | Coaster ID |
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `driver_id` | integer | Yes | Driver user ID |
+
+**Example Request:**
+```json
+{
+    "driver_id": 10
+}
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Driver assigned successfully",
+    "data": {
+        "coaster": {
+            "id": 1,
+            "name": "Luxury Coaster A",
+            "plate_number": "T 123 ABC"
+        },
+        "driver": {
+            "id": 10,
+            "name": "John Driver",
+            "email": "john.driver@example.com",
+            "phone": "+255712345678"
+        }
+    }
+}
+```
+
+**Error Response (400):**
+```json
+{
+    "success": false,
+    "message": "This driver is already assigned to another coaster"
+}
+```
+
+---
+
+### Unassign Driver from Coaster
+
+Remove driver assignment from a coaster.
+
+```http
+POST /api/special-hire/admin/coasters/{coasterId}/unassign-driver
+```
+
+**Path Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `coasterId` | integer | Yes | Coaster ID |
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Driver unassigned successfully"
+}
+```
+
+**Error Response (400):**
+```json
+{
+    "success": false,
+    "message": "No driver assigned to this coaster"
+}
+```
+
+---
+
 ## Error Responses
 
 ### Standard Error Format
@@ -1144,6 +1392,7 @@ API requests are rate limited to prevent abuse:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.1.0 | 2024-12-19 | Added Driver Management endpoints |
 | 1.0.0 | 2024-12-19 | Initial release |
 
 ---

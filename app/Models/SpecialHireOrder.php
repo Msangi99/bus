@@ -15,6 +15,7 @@ class SpecialHireOrder extends Model
     protected $fillable = [
         'order_code',
         'user_id',
+        'customer_user_id',
         'coaster_id',
         'customer_name',
         'customer_phone',
@@ -86,6 +87,14 @@ class SpecialHireOrder extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the customer user account for this order.
+     */
+    public function customer()
+    {
+        return $this->belongsTo(User::class, 'customer_user_id');
     }
 
     /**

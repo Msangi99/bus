@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Coaster;
 use App\Models\SpecialHireOrder;
 use App\Models\SpecialHirePricing;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -1252,6 +1253,288 @@ class SpecialHireApiController extends Controller
                 ],
                 'total_amount' => $priceData['total_amount'],
                 'currency' => 'TZS',
+            ],
+        ]);
+    }
+
+    // ==================== DRIVER MANAGEMENT ====================
+
+    /**
+     * Create driver account and assign to coaster.
+     */
+    public function createDriver(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'coaster_id' => 'required|exists:coasters,id',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'phone' => 'required|string|max:20',
+            'password' => 'required|string|min:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Verify coaster belongs to user
+        $coaster = Coaster::byUser(Auth::id())->find($request->coaster_id);
+
+        if (!$coaster) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Coaster not found',
+            ], 404);
+        }
+
+        // Check if coaster already has a driver
+        if ($coaster->driver_user_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This coaster already has a driver assigned',
+            ], 400);
+        }
+
+        // Create driver user account
+        $driver = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'password' => bcrypt($request->password),
+            'role' => 'driver',
+        ]);
+
+        // Assign driver to coaster
+        $coaster->update([
+            'driver_user_id' => $driver->id,
+            'driver_name' => $driver->name,
+            'driver_contact' => $driver->phone,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Driver account created and assigned successfully',
+            'data' => [
+                'driver' => [
+                    'id' => $driver->id,
+                    'name' => $driver->name,
+                    'email' => $driver->email,
+                    'phone' => $driver->phone,
+                    'role' => $driver->role,
+                ],
+                'coaster' => [
+                    'id' => $coaster->id,
+                    'name' => $coaster->name,
+                    'plate_number' => $coaster->plate_number,
+                ],
+            ],
+        ], 201);
+    }
+
+    /**
+     * Get all drivers for admin's coasters.
+     */
+    public function getDrivers()
+    {
+        $coasters = Coaster::byUser(Auth::id())
+            ->with('driver')
+            ->whereNotNull('driver_user_id')
+            ->get();
+
+        $drivers = $coasters->map(function ($coaster) {
+            return [
+                'driver' => $coaster->driver,
+                'coaster' => [
+                    'id' => $coaster->id,
+                    'name' => $coaster->name,
+                    'plate_number' => $coaster->plate_number,
+                ],
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $drivers,
+        ]);
+    }
+
+    /**
+     * Update driver account.
+     */
+    public function updateDriver(Request $request, $driverId)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:20',
+            'password' => 'nullable|string|min:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Find driver
+        $driver = User::where('role', 'driver')->find($driverId);
+
+        if (!$driver) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Driver not found',
+            ], 404);
+        }
+
+        // Verify driver is assigned to one of admin's coasters
+        $coaster = Coaster::byUser(Auth::id())
+            ->where('driver_user_id', $driverId)
+            ->first();
+
+        if (!$coaster) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This driver is not assigned to any of your coasters',
+            ], 403);
+        }
+
+        // Update driver
+        $data = [];
+        if ($request->has('name')) {
+            $data['name'] = $request->name;
+        }
+        if ($request->has('phone')) {
+            $data['phone'] = $request->phone;
+        }
+        if ($request->has('password')) {
+            $data['password'] = bcrypt($request->password);
+        }
+
+        $driver->update($data);
+
+        // Update coaster driver info
+        $coaster->update([
+            'driver_name' => $driver->name,
+            'driver_contact' => $driver->phone,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Driver updated successfully',
+            'data' => [
+                'id' => $driver->id,
+                'name' => $driver->name,
+                'email' => $driver->email,
+                'phone' => $driver->phone,
+            ],
+        ]);
+    }
+
+    /**
+     * Unassign driver from coaster.
+     */
+    public function unassignDriver($coasterId)
+    {
+        $coaster = Coaster::byUser(Auth::id())->find($coasterId);
+
+        if (!$coaster) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Coaster not found',
+            ], 404);
+        }
+
+        if (!$coaster->driver_user_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No driver assigned to this coaster',
+            ], 400);
+        }
+
+        $driverId = $coaster->driver_user_id;
+
+        // Unassign driver
+        $coaster->update([
+            'driver_user_id' => null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Driver unassigned successfully',
+        ]);
+    }
+
+    /**
+     * Assign existing driver to coaster.
+     */
+    public function assignDriver(Request $request, $coasterId)
+    {
+        $validator = Validator::make($request->all(), [
+            'driver_id' => 'required|exists:users,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $coaster = Coaster::byUser(Auth::id())->find($coasterId);
+
+        if (!$coaster) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Coaster not found',
+            ], 404);
+        }
+
+        // Check if driver exists and is a driver role
+        $driver = User::where('role', 'driver')->find($request->driver_id);
+
+        if (!$driver) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Driver not found',
+            ], 404);
+        }
+
+        // Check if driver is already assigned to another coaster
+        $existingAssignment = Coaster::where('driver_user_id', $driver->id)
+            ->where('id', '!=', $coasterId)
+            ->first();
+
+        if ($existingAssignment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This driver is already assigned to another coaster',
+            ], 400);
+        }
+
+        // Assign driver
+        $coaster->update([
+            'driver_user_id' => $driver->id,
+            'driver_name' => $driver->name,
+            'driver_contact' => $driver->phone,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Driver assigned successfully',
+            'data' => [
+                'coaster' => [
+                    'id' => $coaster->id,
+                    'name' => $coaster->name,
+                    'plate_number' => $coaster->plate_number,
+                ],
+                'driver' => [
+                    'id' => $driver->id,
+                    'name' => $driver->name,
+                    'email' => $driver->email,
+                    'phone' => $driver->phone,
+                ],
             ],
         ]);
     }
