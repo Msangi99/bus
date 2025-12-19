@@ -66,6 +66,7 @@
             <!-- Driver Info -->
             <div class="border-t border-gray-100 pt-6">
                 <h4 class="text-md font-semibold text-gray-800 mb-4">Driver Information</h4>
+                <p class="text-sm text-gray-600 mb-2">Add driver contact and credentials to create the driver&rsquo;s login.</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Driver Name</label>
@@ -81,6 +82,22 @@
                                class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                placeholder="e.g., +255712345678">
                         @error('driver_contact')<p class="text-red-500 text-sm mt-1">{{ $message }}</p>@enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Driver Email</label>
+                        <input type="email" name="driver_email" value="{{ old('driver_email') }}"
+                               class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                               placeholder="e.g., driver@example.com">
+                        @error('driver_email')<p class="text-red-500 text-sm mt-1">{{ $message }}</p>@enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Driver Password</label>
+                        <input type="password" name="driver_password"
+                               class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                               placeholder="Minimum 6 characters">
+                        @error('driver_password')<p class="text-red-500 text-sm mt-1">{{ $message }}</p>@enderror
                     </div>
                 </div>
             </div>

@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Coaster;
 use App\Models\SpecialHireOrder;
 use App\Models\SpecialHirePricing;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 class SpecialHireController extends Controller
@@ -105,12 +107,26 @@ class SpecialHireController extends Controller
             'color' => 'nullable|string|max:50',
             'driver_name' => 'nullable|string|max:100',
             'driver_contact' => 'nullable|string|max:20',
+            'driver_email' => 'nullable|email|unique:users,email|required_with:driver_password',
+            'driver_password' => 'nullable|string|min:6|required_with:driver_email',
             'features' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'base_price' => 'required|numeric|min:0',
             'price_per_km' => 'required|numeric|min:0',
             'min_km' => 'required|integer|min:1',
         ]);
+
+        $driver = null;
+        if ($request->filled('driver_email')) {
+            $driverName = $request->driver_name ?: "{$request->name} Driver";
+            $driver = User::create([
+                'name' => $driverName,
+                'email' => $request->driver_email,
+                'contact' => $request->driver_contact,
+                'password' => Hash::make($request->driver_password),
+                'role' => 'driver',
+            ]);
+        }
 
         // Handle image upload
         $imagePath = null;
@@ -126,8 +142,9 @@ class SpecialHireController extends Controller
             'capacity' => $request->capacity,
             'model' => $request->model,
             'color' => $request->color,
-            'driver_name' => $request->driver_name,
-            'driver_contact' => $request->driver_contact,
+            'driver_user_id' => $driver?->id,
+            'driver_name' => $driver?->name ?? $request->driver_name,
+            'driver_contact' => $driver?->contact ?? $request->driver_contact,
             'features' => $request->features,
             'image' => $imagePath,
             'status' => 'available',
