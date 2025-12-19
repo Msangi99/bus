@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Coaster extends Model
 {
@@ -33,6 +34,22 @@ class Coaster extends Model
         'longitude' => 'decimal:8',
         'last_location_update' => 'datetime',
     ];
+
+    /**
+     * The accessors to append to the model's array form.
+     */
+    protected $appends = ['image_url'];
+
+    /**
+     * Get the full URL for the coaster image.
+     */
+    public function getImageUrlAttribute()
+    {
+        if ($this->image) {
+            return asset('storage/' . $this->image);
+        }
+        return null;
+    }
 
     /**
      * Get the user (special_hire owner) that owns the coaster.
