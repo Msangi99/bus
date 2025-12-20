@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('special_hire_pricing', function (Blueprint $table) {
             $table->id();
             $table->foreignId('coaster_id')->constrained()->onDelete('cascade');
-            $table->decimal('base_price', 12, 2)->default(100000);
+            $table->decimal('base_price', 12, 2)->default(0); // No base price - pricing is distance × price_per_km
             $table->decimal('price_per_km', 10, 2)->default(2500);
             $table->integer('min_km')->default(10);
             $table->decimal('weekend_surcharge_percent', 5, 2)->default(15);

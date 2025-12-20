@@ -189,7 +189,7 @@ class CustomerApiController extends Controller
      */
     public function getCoasters(Request $request)
     {
-        $query = Coaster::with('pricing')
+        $query = Coaster::with(['pricing', 'driver'])
             ->whereNotNull('latitude')
             ->whereNotNull('longitude');
 
@@ -223,7 +223,7 @@ class CustomerApiController extends Controller
                 }
             }
 
-            return [
+            $data = [
                 'id' => $coaster->id,
                 'name' => $coaster->name,
                 'plate_number' => $coaster->plate_number,
@@ -239,6 +239,24 @@ class CustomerApiController extends Controller
                 'status' => $coaster->status,
                 'pricing' => $coaster->pricing,
             ];
+
+            // Add driver information if available
+            if ($coaster->driver) {
+                $data['driver'] = [
+                    'id' => $coaster->driver->id,
+                    'name' => $coaster->driver->name,
+                    'phone' => $coaster->driver->phone ?? $coaster->driver_contact,
+                    'email' => $coaster->driver->email,
+                ];
+            } else if ($coaster->driver_name) {
+                // Fallback to legacy driver fields if no driver account
+                $data['driver'] = [
+                    'name' => $coaster->driver_name,
+                    'phone' => $coaster->driver_contact,
+                ];
+            }
+
+            return $data;
         });
 
         return response()->json([
@@ -252,7 +270,7 @@ class CustomerApiController extends Controller
      */
     public function getCoaster($id)
     {
-        $coaster = Coaster::with('pricing')->find($id);
+        $coaster = Coaster::with(['pricing', 'driver'])->find($id);
 
         if (!$coaster) {
             return response()->json([
@@ -261,20 +279,38 @@ class CustomerApiController extends Controller
             ], 404);
         }
 
+        $data = [
+            'id' => $coaster->id,
+            'name' => $coaster->name,
+            'plate_number' => $coaster->plate_number,
+            'capacity' => $coaster->capacity,
+            'model' => $coaster->model,
+            'color' => $coaster->color,
+            'features' => $coaster->features,
+            'image_url' => $coaster->image_url,
+            'status' => $coaster->status,
+            'pricing' => $coaster->pricing,
+        ];
+
+        // Add driver information if available
+        if ($coaster->driver) {
+            $data['driver'] = [
+                'id' => $coaster->driver->id,
+                'name' => $coaster->driver->name,
+                'phone' => $coaster->driver->phone ?? $coaster->driver_contact,
+                'email' => $coaster->driver->email,
+            ];
+        } else if ($coaster->driver_name) {
+            // Fallback to legacy driver fields if no driver account
+            $data['driver'] = [
+                'name' => $coaster->driver_name,
+                'phone' => $coaster->driver_contact,
+            ];
+        }
+
         return response()->json([
             'success' => true,
-            'data' => [
-                'id' => $coaster->id,
-                'name' => $coaster->name,
-                'plate_number' => $coaster->plate_number,
-                'capacity' => $coaster->capacity,
-                'model' => $coaster->model,
-                'color' => $coaster->color,
-                'features' => $coaster->features,
-                'image_url' => $coaster->image_url,
-                'status' => $coaster->status,
-                'pricing' => $coaster->pricing,
-            ],
+            'data' => $data,
         ]);
     }
 
@@ -365,6 +401,8 @@ class CustomerApiController extends Controller
             'notes' => 'nullable|string',
             'phone' => 'nullable|string|max:20',
             'contact' => 'nullable|string|max:20',
+            'total_amount' => 'required|numeric|min:0',
+            'distance_km' => 'required|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -403,18 +441,12 @@ class CustomerApiController extends Controller
             ], 400);
         }
 
-        // Calculate distance
-        $distanceKm = 0;
-        if ($request->pickup_latitude && $request->dropoff_latitude) {
-            $distanceKm = SpecialHirePricing::calculateDistance(
-                $request->pickup_latitude,
-                $request->pickup_longitude,
-                $request->dropoff_latitude,
-                $request->dropoff_longitude
-            );
-        }
-
-        // Calculate price
+        // Use the amount and distance provided by the customer app
+        // The customer app calculates: distance × price_per_km + surcharges
+        $distanceKm = $request->distance_km;
+        $totalAmount = $request->total_amount;
+        
+        // Calculate price breakdown for record-keeping
         $priceData = $coaster->pricing->calculatePrice(
             $distanceKm,
             $request->hire_date,
@@ -444,13 +476,13 @@ class CustomerApiController extends Controller
             'passengers_count' => $request->passengers_count,
             'purpose' => $request->purpose,
             'notes' => $request->notes,
-            'distance_km' => $priceData['distance_km'],
-            'base_price' => $breakdown['base_price'],
-            'price_per_km' => $breakdown['price_per_km'],
+            'distance_km' => $distanceKm,
+            'base_price' => 0, // No base price
+            'price_per_km' => $coaster->pricing->price_per_km,
             'km_amount' => $breakdown['km_amount'],
             'surcharge_percent' => $breakdown['surcharge_percent'],
             'surcharge_amount' => $breakdown['surcharge_amount'],
-            'total_amount' => $priceData['total_amount'],
+            'total_amount' => $totalAmount, // Use amount from customer app
             'order_status' => 'pending',
             'payment_status' => 'pending',
         ]);

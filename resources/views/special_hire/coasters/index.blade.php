@@ -90,13 +90,13 @@
 
                         @if($coaster->pricing)
                             <div class="bg-gray-50 rounded-lg p-3 mb-4">
-                                <div class="flex justify-between text-sm">
-                                    <span class="text-gray-500">Base Price:</span>
-                                    <span class="font-semibold">Tsh {{ number_format($coaster->pricing->base_price) }}</span>
+                                <div class="flex justify-between text-sm mt-1">
+                                    <span class="text-gray-500">Price Per KM:</span>
+                                    <span class="font-semibold">Tsh {{ number_format($coaster->pricing->price_per_km) }}</span>
                                 </div>
                                 <div class="flex justify-between text-sm mt-1">
-                                    <span class="text-gray-500">Per KM:</span>
-                                    <span class="font-semibold">Tsh {{ number_format($coaster->pricing->price_per_km) }}</span>
+                                    <span class="text-gray-500">Min Distance:</span>
+                                    <span class="font-semibold">{{ number_format($coaster->pricing->min_km) }} km</span>
                                 </div>
                             </div>
                         @endif

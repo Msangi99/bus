@@ -166,11 +166,7 @@
                 <h3 class="text-lg font-bold mb-4">Price Breakdown</h3>
                 <div class="space-y-3 text-sm">
                     <div class="flex justify-between">
-                        <span class="text-teal-100">Base Price:</span>
-                        <span>Tsh {{ number_format($order->base_price) }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-teal-100">Distance ({{ $order->distance_km }} km × {{ number_format($order->price_per_km) }}):</span>
+                        <span class="text-teal-100">Distance ({{ $order->distance_km }} km × Tsh {{ number_format($order->price_per_km) }}):</span>
                         <span>Tsh {{ number_format($order->km_amount) }}</span>
                     </div>
                     @if($order->surcharge_amount > 0)

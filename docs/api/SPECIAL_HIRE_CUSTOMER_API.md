@@ -11,9 +11,9 @@
 ## Quick Guide (UI & AI Agents)
 
 - **Happy path (UI flow):** Register/Login → Load coasters for the map → Let user pick pickup/drop-off → Call price calculator → Create booking → Poll tracking once status = `in_progress` → Allow cancel when status ∈ `pending|confirmed|in_progress`.
-- **Map essentials:** Use `latitude`/`longitude` plus `availability_status` to color markers (`available` = green, `busy` = red). Show `name`, `capacity`, `features`, and `pricing.base_price` in a tooltip/card. Hide/disable booking CTA when `is_available` is false.
+- **Map essentials:** Use `latitude`/`longitude` plus `availability_status` to color markers (`available` = green, `busy` = red). Show `name`, `capacity`, `features`, and `pricing.price_per_km` in a tooltip/card. Hide/disable booking CTA when `is_available` is false.
 - **Forms:** Use the same payloads shown below. Require date/time inputs in `YYYY-MM-DD` and `HH:MM` (24h). If coordinates are available from the map, pass all four lat/lng values; otherwise, allow manual `distance_km`.
-- **Prices:** All amounts are in TZS. The calculator returns a breakdown with surcharges; show both the raw and final totals to the user.
+- **Prices:** All amounts are in TZS. There is NO base price - price is calculated as distance × price per km + surcharges. The calculator returns a breakdown with surcharges; show both the raw and final totals to the user.
 - **Status to UI mapping:** `available` (green), `busy` (red); bookings: `pending` → `confirmed` → `in_progress` → `completed` (or `cancelled`).
 - **Tracking:** Poll `/bookings/{id}/track` every 15–30s while `order_status` is `in_progress` and update the map marker.
 
@@ -246,11 +246,17 @@ GET /api/special-hire/customer/coasters?date=2024-12-25&time=08:00
             "pricing": {
                 "id": 1,
                 "coaster_id": 1,
-                "base_price": 150000,
+                "base_price": 0,
                 "price_per_km": 2500,
                 "min_km": 20,
                 "weekend_surcharge_percent": 15,
                 "night_surcharge_percent": 20
+            },
+            "driver": {
+                "id": 10,
+                "name": "John Driver",
+                "phone": "+255712345678",
+                "email": "john.driver@example.com"
             }
         },
         {
@@ -270,11 +276,17 @@ GET /api/special-hire/customer/coasters?date=2024-12-25&time=08:00
             "pricing": {
                 "id": 2,
                 "coaster_id": 2,
-                "base_price": 200000,
+                "base_price": 0,
                 "price_per_km": 3000,
                 "min_km": 25,
                 "weekend_surcharge_percent": 20,
                 "night_surcharge_percent": 25
+            },
+            "driver": {
+                "id": 11,
+                "name": "Jane Driver",
+                "phone": "+255713456789",
+                "email": "jane.driver@example.com"
             }
         }
     ]
@@ -285,10 +297,17 @@ GET /api/special-hire/customer/coasters?date=2024-12-25&time=08:00
 - `available` (🟢 Green) - Coaster is free and can be booked
 - `busy` (🔴 Red) - Coaster has an order at that time or is on hire
 
+**Driver Information:**
+- If a driver is assigned to the coaster, their information will be included in the response
+- Driver object contains: `id`, `name`, `phone`, `email`
+- If no driver account exists but legacy driver info is available, only `name` and `phone` will be returned
+- Some coasters may not have driver information assigned yet
+
 **UI tips (Map):**
 - Plot markers using `latitude`/`longitude`; color by `availability_status`.
 - Use `pricing.base_price` + `pricing.price_per_km` as the short price summary on the card/tooltip.
-- Disable or gray out “Book” CTAs for `busy` items to avoid failed submissions.
+- Display driver name and contact if available for customer confidence.
+- Disable or gray out "Book" CTAs for `busy` items to avoid failed submissions.
 - If `date`/`time` filters are set, surface them in the UI so users know availability is time-bound.
 
 ---
@@ -318,11 +337,17 @@ GET /api/special-hire/customer/coasters/{id}
         "pricing": {
             "id": 1,
             "coaster_id": 1,
-            "base_price": 150000,
+            "base_price": 0,
             "price_per_km": 2500,
             "min_km": 20,
             "weekend_surcharge_percent": 15,
             "night_surcharge_percent": 20
+        },
+        "driver": {
+            "id": 10,
+            "name": "John Driver",
+            "phone": "+255712345678",
+            "email": "john.driver@example.com"
         }
     }
 }
@@ -381,14 +406,14 @@ POST /api/special-hire/customer/calculate-price
         "distance_km": 25,
         "billable_km": 25,
         "breakdown": {
-            "base_price": 150000,
+            "base_price": 0,
             "price_per_km": 2500,
             "km_amount": 62500,
             "surcharge_percent": 0,
             "surcharge_labels": [],
             "surcharge_amount": 0
         },
-        "total_amount": 212500,
+        "total_amount": 62500,
         "currency": "TZS"
     }
 }
@@ -407,14 +432,14 @@ POST /api/special-hire/customer/calculate-price
         "distance_km": 50,
         "billable_km": 50,
         "breakdown": {
-            "base_price": 150000,
+            "base_price": 0,
             "price_per_km": 2500,
             "km_amount": 125000,
             "surcharge_percent": 35,
             "surcharge_labels": ["Weekend (+15%)", "Night (+20%)"],
-            "surcharge_amount": 96250
+            "surcharge_amount": 43750
         },
-        "total_amount": 371250,
+        "total_amount": 168750,
         "currency": "TZS"
     }
 }
@@ -424,6 +449,7 @@ POST /api/special-hire/customer/calculate-price
 - If the user selects pickup/drop-off on the map, pass all four coordinates so distance is computed automatically; otherwise, show a manual `distance_km` field.
 - Display both `distance_km` and `billable_km` to explain minimums.
 - Surface `breakdown.surcharge_labels` so users understand why the price changed (e.g., weekend or night).
+- Remember: There is NO base price. Total = (distance × price_per_km) + surcharges.
 
 ---
 
@@ -455,6 +481,8 @@ POST /api/special-hire/customer/bookings
 | `passengers_count` | integer | Yes | Number of passengers (min: 1) |
 | `purpose` | string | No | Purpose of hire |
 | `notes` | string | No | Additional notes |
+| `distance_km` | numeric | Yes | Distance in kilometers calculated by app |
+| `total_amount` | numeric | Yes | Total amount calculated by app (distance × price_per_km + surcharges) |
 
 **Example Request:**
 ```json
@@ -472,7 +500,9 @@ POST /api/special-hire/customer/bookings
     "return_time": "10:00",
     "passengers_count": 20,
     "purpose": "Airport Transfer",
-    "notes": "Please arrive 10 minutes early"
+    "notes": "Please arrive 10 minutes early",
+    "distance_km": 25.5,
+    "total_amount": 63750
 }
 ```
 
@@ -493,8 +523,8 @@ POST /api/special-hire/customer/bookings
         "hire_date": "2024-12-28",
         "hire_time": "06:00:00",
         "passengers_count": 20,
-        "distance_km": 25,
-        "total_amount": 212500,
+        "distance_km": 25.5,
+        "total_amount": 63750,
         "order_status": "pending",
         "payment_status": "pending",
         "coaster": {
@@ -545,7 +575,7 @@ GET /api/special-hire/customer/bookings?status=confirmed
                 "hire_date": "2024-12-28",
                 "hire_time": "06:00:00",
                 "passengers_count": 20,
-                "total_amount": 212500,
+                "total_amount": 62500,
                 "order_status": "confirmed",
                 "payment_status": "paid",
                 "coaster": {
@@ -596,12 +626,12 @@ GET /api/special-hire/customer/bookings/{id}
         "purpose": "Airport Transfer",
         "notes": "Please arrive 10 minutes early",
         "distance_km": 25,
-        "base_price": 150000,
+        "base_price": 0,
         "price_per_km": 2500,
         "km_amount": 62500,
         "surcharge_percent": 0,
         "surcharge_amount": 0,
-        "total_amount": 212500,
+        "total_amount": 62500,
         "order_status": "confirmed",
         "payment_status": "paid",
         "payment_method": "M-Pesa",
@@ -758,11 +788,12 @@ POST /api/special-hire/customer/logout
 ### Formula
 
 ```
-Total = Base Price + (Billable KM × Price per KM) + Surcharges
+Total = (Billable KM × Price per KM) + Surcharges
 
 Where:
 - Billable KM = max(Actual KM, Min KM)
-- Surcharges = (Base Price + KM Amount) × Surcharge Percentage
+- Surcharges = KM Amount × Surcharge Percentage
+- NO BASE PRICE is included in the calculation
 ```
 
 ### Surcharge Rules
@@ -786,14 +817,21 @@ Where:
    - 🔴 **Red (busy)**: Coaster has an order or is on hire
 
 4. **Booking Flow**:
-   - Customer creates booking → Status: `pending`
-   - Admin confirms → Status: `confirmed`
-   - Driver starts trip → Status: `in_progress`
-   - Driver completes trip → Status: `completed`
+   - Customer uses `/calculate-price` to get estimated price
+   - Customer app calculates: `distance × price_per_km + surcharges`
+   - Customer app sends booking request with `distance_km` and `total_amount`
+   - Server accepts the calculated amount from the customer app
+   - Status: `pending` → Admin confirms → `confirmed` → Driver starts → `in_progress` → `completed`
 
-5. **Payment**: Payment processing is handled separately. Contact admin for payment methods.
+5. **Price Calculation**: 
+   - Customer app should call `/calculate-price` endpoint first
+   - Customer app calculates final amount based on distance × price_per_km
+   - Customer app includes both `distance_km` and `total_amount` in booking request
+   - No base price is included in calculations
 
-6. **Tracking**: Real-time tracking is available for bookings with status `in_progress`.
+6. **Payment**: Payment processing is handled separately. Contact admin for payment methods.
+
+7. **Tracking**: Real-time tracking is available for bookings with status `in_progress`.
 
 ---
 

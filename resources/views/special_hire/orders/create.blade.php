@@ -161,11 +161,7 @@
                     <h4 class="text-md font-semibold text-gray-800 mb-4">Price Estimate</h4>
                     <div class="space-y-2 text-sm" id="priceBreakdown">
                         <div class="flex justify-between">
-                            <span class="text-gray-600">Base Price:</span>
-                            <span class="font-medium" id="basePriceDisplay">Tsh 0</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Distance Charge (<span id="distanceDisplay">0</span> km × <span id="rateDisplay">0</span>):</span>
+                            <span class="text-gray-600">Distance Charge (<span id="distanceDisplay">0</span> km × Tsh <span id="rateDisplay">0</span>):</span>
                             <span class="font-medium" id="kmAmountDisplay">Tsh 0</span>
                         </div>
                         <div class="flex justify-between" id="surchargeRow" style="display: none;">
@@ -209,12 +205,11 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const basePrice = parseFloat(selectedOption.dataset.basePrice) || 0;
         const pricePerKm = parseFloat(selectedOption.dataset.pricePerKm) || 0;
         const minKm = parseFloat(selectedOption.dataset.minKm) || 10;
         const distance = Math.max(parseFloat(distanceInput.value) || 0, minKm);
         
-        // Calculate KM amount
+        // Calculate KM amount - NO BASE PRICE
         const kmAmount = distance * pricePerKm;
         
         // Check for surcharges
@@ -234,14 +229,13 @@ document.addEventListener('DOMContentLoaded', function() {
             surchargeLabels.push('Night +20%');
         }
         
-        const subtotal = basePrice + kmAmount;
-        const surchargeAmount = (subtotal * surchargePercent) / 100;
-        const total = subtotal + surchargeAmount;
+        // Calculate total - surcharge applies only to km_amount (no base price)
+        const surchargeAmount = (kmAmount * surchargePercent) / 100;
+        const total = kmAmount + surchargeAmount;
 
         // Update display
-        document.getElementById('basePriceDisplay').textContent = 'Tsh ' + numberFormat(basePrice);
         document.getElementById('distanceDisplay').textContent = distance.toFixed(1);
-        document.getElementById('rateDisplay').textContent = 'Tsh ' + numberFormat(pricePerKm);
+        document.getElementById('rateDisplay').textContent = numberFormat(pricePerKm);
         document.getElementById('kmAmountDisplay').textContent = 'Tsh ' + numberFormat(kmAmount);
         
         if (surchargePercent > 0) {
@@ -256,7 +250,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function resetPriceDisplay() {
-        document.getElementById('basePriceDisplay').textContent = 'Tsh 0';
         document.getElementById('distanceDisplay').textContent = '0';
         document.getElementById('rateDisplay').textContent = '0';
         document.getElementById('kmAmountDisplay').textContent = 'Tsh 0';

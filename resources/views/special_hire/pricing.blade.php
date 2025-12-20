@@ -78,9 +78,9 @@
 
                         <!-- Example Calculation -->
                         <div class="mt-4 p-4 bg-gray-50 rounded-xl">
-                            <p class="text-sm text-gray-600 mb-2">Example: 50 km trip</p>
+                            <p class="text-sm text-gray-600 mb-2">Example: 50 km trip (no base price)</p>
                             <p class="text-lg font-bold text-teal-600">
-                                Tsh {{ number_format(($coaster->pricing->base_price ?? 100000) + (50 * ($coaster->pricing->price_per_km ?? 2500))) }}
+                                Tsh {{ number_format(50 * ($coaster->pricing->price_per_km ?? 2500)) }}
                             </p>
                         </div>
 

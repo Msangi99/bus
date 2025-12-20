@@ -38,14 +38,15 @@ class SpecialHirePricing extends Model
 
     /**
      * Calculate price based on distance and schedule.
+     * Price is calculated as: (distance × price_per_km) + surcharges
+     * No base price is included - amount comes from customer app calculation.
      */
     public function calculatePrice($distanceKm, $hireDate, $hireTime)
     {
         // Ensure minimum KM
         $billableKm = max($distanceKm, $this->min_km);
 
-        // Base calculation
-        $basePrice = $this->base_price;
+        // Calculate amount based only on distance × price per km
         $kmAmount = $billableKm * $this->price_per_km;
 
         // Check for surcharges
@@ -66,16 +67,15 @@ class SpecialHirePricing extends Model
             $surchargeLabels[] = 'Night';
         }
 
-        // Calculate totals
-        $subtotal = $basePrice + $kmAmount;
-        $surchargeAmount = ($subtotal * $surchargePercent) / 100;
-        $totalAmount = $subtotal + $surchargeAmount;
+        // Calculate totals - surcharge is applied to km_amount only (no base price)
+        $surchargeAmount = ($kmAmount * $surchargePercent) / 100;
+        $totalAmount = $kmAmount + $surchargeAmount;
 
         return [
             'distance_km' => $distanceKm,
             'billable_km' => $billableKm,
             'breakdown' => [
-                'base_price' => round($basePrice, 2),
+                'base_price' => 0, // No base price - kept for backward compatibility
                 'price_per_km' => round($this->price_per_km, 2),
                 'km_amount' => round($kmAmount, 2),
                 'surcharge_percent' => round($surchargePercent, 2),
@@ -83,7 +83,7 @@ class SpecialHirePricing extends Model
                 'surcharge_amount' => round($surchargeAmount, 2),
             ],
             // Keep flat keys for backward compatibility with existing consumers
-            'base_price' => round($basePrice, 2),
+            'base_price' => 0, // No base price - kept for backward compatibility
             'price_per_km' => round($this->price_per_km, 2),
             'km_amount' => round($kmAmount, 2),
             'surcharge_percent' => round($surchargePercent, 2),
