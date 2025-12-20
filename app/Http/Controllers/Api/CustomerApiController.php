@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
 class CustomerApiController extends Controller
@@ -157,7 +158,13 @@ class CustomerApiController extends Controller
             $data['name'] = $request->name;
         }
         if ($request->has('phone')) {
-            $data['phone'] = $request->phone;
+            // Write to whichever column exists (phone or contact)
+            if (Schema::hasColumn('users', 'phone')) {
+                $data['phone'] = $request->phone;
+            }
+            if (Schema::hasColumn('users', 'contact')) {
+                $data['contact'] = $request->phone;
+            }
         }
         if ($request->has('password')) {
             $data['password'] = Hash::make($request->password);
@@ -357,6 +364,7 @@ class CustomerApiController extends Controller
             'purpose' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'phone' => 'nullable|string|max:20',
+            'contact' => 'nullable|string|max:20',
         ]);
 
         if ($validator->fails()) {
@@ -367,7 +375,10 @@ class CustomerApiController extends Controller
         }
 
         // Ensure we have a customer phone (DB column is non-nullable)
-        $customerPhone = $user->phone ?: $request->phone;
+        $customerPhone = $request->phone
+            ?: $request->contact
+            ?: ($user->phone ?? null)
+            ?: ($user->contact ?? null);
         if (!$customerPhone) {
             return response()->json([
                 'success' => false,
