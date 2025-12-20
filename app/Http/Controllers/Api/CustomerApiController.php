@@ -401,6 +401,8 @@ class CustomerApiController extends Controller
         );
 
         // Create order
+        $breakdown = $priceData['breakdown'] ?? $priceData;
+
         $order = SpecialHireOrder::create([
             'user_id' => $coaster->user_id, // Admin/Owner
             'customer_user_id' => $user->id, // Customer
@@ -422,11 +424,11 @@ class CustomerApiController extends Controller
             'purpose' => $request->purpose,
             'notes' => $request->notes,
             'distance_km' => $priceData['distance_km'],
-            'base_price' => $priceData['breakdown']['base_price'],
-            'price_per_km' => $priceData['breakdown']['price_per_km'],
-            'km_amount' => $priceData['breakdown']['km_amount'],
-            'surcharge_percent' => $priceData['breakdown']['surcharge_percent'],
-            'surcharge_amount' => $priceData['breakdown']['surcharge_amount'],
+            'base_price' => $breakdown['base_price'],
+            'price_per_km' => $breakdown['price_per_km'],
+            'km_amount' => $breakdown['km_amount'],
+            'surcharge_percent' => $breakdown['surcharge_percent'],
+            'surcharge_amount' => $breakdown['surcharge_amount'],
             'total_amount' => $priceData['total_amount'],
             'order_status' => 'pending',
             'payment_status' => 'pending',
@@ -583,4 +585,5 @@ class CustomerApiController extends Controller
         ]);
     }
 }
+
 

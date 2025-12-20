@@ -8,8 +8,20 @@
 
 ---
 
+## Quick Guide (UI & AI Agents)
+
+- **Happy path (UI flow):** Register/Login → Load coasters for the map → Let user pick pickup/drop-off → Call price calculator → Create booking → Poll tracking once status = `in_progress` → Allow cancel when status ∈ `pending|confirmed|in_progress`.
+- **Map essentials:** Use `latitude`/`longitude` plus `availability_status` to color markers (`available` = green, `busy` = red). Show `name`, `capacity`, `features`, and `pricing.base_price` in a tooltip/card. Hide/disable booking CTA when `is_available` is false.
+- **Forms:** Use the same payloads shown below. Require date/time inputs in `YYYY-MM-DD` and `HH:MM` (24h). If coordinates are available from the map, pass all four lat/lng values; otherwise, allow manual `distance_km`.
+- **Prices:** All amounts are in TZS. The calculator returns a breakdown with surcharges; show both the raw and final totals to the user.
+- **Status to UI mapping:** `available` (green), `busy` (red); bookings: `pending` → `confirmed` → `in_progress` → `completed` (or `cancelled`).
+- **Tracking:** Poll `/bookings/{id}/track` every 15–30s while `order_status` is `in_progress` and update the map marker.
+
+---
+
 ## Table of Contents
 
+0. [Quick Guide (UI & AI Agents)](#quick-guide-ui--ai-agents)
 1. [Authentication](#authentication)
 2. [Profile Management](#profile-management)
 3. [Browse Coasters](#browse-coasters)
@@ -273,6 +285,12 @@ GET /api/special-hire/customer/coasters?date=2024-12-25&time=08:00
 - `available` (🟢 Green) - Coaster is free and can be booked
 - `busy` (🔴 Red) - Coaster has an order at that time or is on hire
 
+**UI tips (Map):**
+- Plot markers using `latitude`/`longitude`; color by `availability_status`.
+- Use `pricing.base_price` + `pricing.price_per_km` as the short price summary on the card/tooltip.
+- Disable or gray out “Book” CTAs for `busy` items to avoid failed submissions.
+- If `date`/`time` filters are set, surface them in the UI so users know availability is time-bound.
+
 ---
 
 ### Get Single Coaster
@@ -401,6 +419,11 @@ POST /api/special-hire/customer/calculate-price
     }
 }
 ```
+
+**UI tips (Pricing):**
+- If the user selects pickup/drop-off on the map, pass all four coordinates so distance is computed automatically; otherwise, show a manual `distance_km` field.
+- Display both `distance_km` and `billable_km` to explain minimums.
+- Surface `breakdown.surcharge_labels` so users understand why the price changed (e.g., weekend or night).
 
 ---
 
@@ -626,6 +649,11 @@ POST /api/special-hire/customer/bookings/{id}/cancel
 
 **Note:** Only bookings with status `pending`, `confirmed`, or `in_progress` can be cancelled.
 
+**UI tips (Bookings):**
+- When showing a booking card, include `order_status`, `payment_status`, and `total_amount` together to reduce confusion.
+- Gate the “Cancel” button to statuses `pending|confirmed|in_progress`; hide/disable otherwise.
+- If coordinates are present, render pickup/drop-off pins and draw a line between them for quick visual context.
+
 ---
 
 ## Tracking
@@ -657,6 +685,11 @@ GET /api/special-hire/customer/bookings/{id}/track
     }
 }
 ```
+
+**UI tips (Tracking & Map):**
+- Start polling every 15–30 seconds when `order_status` is `in_progress`; stop when it becomes `completed` or `cancelled`.
+- Update the existing map marker instead of adding new ones to avoid clutter; show `last_location_update` as “last seen” text.
+- If location is temporarily missing, keep the last known point but indicate it is stale.
 
 ---
 
@@ -768,4 +801,5 @@ Where:
 **Last Updated:** December 19, 2024
 
 For support, contact: api-support@example.com
+
 

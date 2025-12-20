@@ -74,6 +74,15 @@ class SpecialHirePricing extends Model
         return [
             'distance_km' => $distanceKm,
             'billable_km' => $billableKm,
+            'breakdown' => [
+                'base_price' => round($basePrice, 2),
+                'price_per_km' => round($this->price_per_km, 2),
+                'km_amount' => round($kmAmount, 2),
+                'surcharge_percent' => round($surchargePercent, 2),
+                'surcharge_labels' => $surchargeLabels,
+                'surcharge_amount' => round($surchargeAmount, 2),
+            ],
+            // Keep flat keys for backward compatibility with existing consumers
             'base_price' => round($basePrice, 2),
             'price_per_km' => round($this->price_per_km, 2),
             'km_amount' => round($kmAmount, 2),
