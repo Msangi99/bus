@@ -19,6 +19,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'phone',
         'contact',
         'status',
         'campany_id', // Added for local bus owners

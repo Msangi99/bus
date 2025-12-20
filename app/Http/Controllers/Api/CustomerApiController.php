@@ -356,12 +356,22 @@ class CustomerApiController extends Controller
             'passengers_count' => 'required|integer|min:1',
             'purpose' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
+            'phone' => 'nullable|string|max:20',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
                 'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Ensure we have a customer phone (DB column is non-nullable)
+        $customerPhone = $user->phone ?: $request->phone;
+        if (!$customerPhone) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Phone number is required. Update your profile or include phone in the booking request.',
             ], 422);
         }
 
@@ -408,7 +418,7 @@ class CustomerApiController extends Controller
             'customer_user_id' => $user->id, // Customer
             'coaster_id' => $coaster->id,
             'customer_name' => $user->name,
-            'customer_phone' => $user->phone ?? $request->phone,
+            'customer_phone' => $customerPhone,
             'customer_email' => $user->email,
             'pickup_location' => $request->pickup_location,
             'pickup_latitude' => $request->pickup_latitude,
